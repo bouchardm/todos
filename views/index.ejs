@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="/css/base.css">
+	</head>
+	<body>
+
+	<section id="todoapp" class="ng-scope">
+	<header id="header">
+		<h1>Mes todos</h1>
+		<form id="todo-form" class="ng-valid ng-dirty" >
+			<input id="new-todo" placeholder="Qu'est-ce qu'il y a à faire?" autofocus="" class="ng-valid ng-dirty">
+		</form>
+	</header>
+	<section id="main">
+		<input id="toggle-all" type="checkbox" class="ng-pristine ng-valid">
+
+		<ul id="todo-list">
+			<li class="ng-scope">
+				<div class="view">
+					<input class="toggle ng-pristine ng-valid" type="checkbox">
+					<label class="ng-binding">sdf</label>
+					<button class="destroy"></button>
+				</div>
+				<form class="ng-pristine ng-valid" >
+					<input class="edit ng-pristine ng-valid">
+				</form>
+			</li>
+		</ul>
+	</section>
+	<footer id="footer">
+		<span id="todo-count">
+			<strong>1</strong> Todo(s) restant
+		</span>
+		<ul id="filters">
+			<li>
+				<% if (mode === "normal") { %>
+					<a href="/" class="selected">Tout</a>
+				<% } else { %>
+					<a href="/">Tout</a>
+				<% } %>
+			</li>
+			<li>
+				<% if (mode === "actif") { %>
+					<a href="/actif" class="selected">Actif</a>
+				<% } else { %>
+					<a href="/actif">Actif</a>
+				<% } %>
+			</li>
+			<li>
+				<% if (mode === "termine") { %>
+					<a href="/termine" class="selected">Terminé</a>
+				<% } else { %>
+					<a href="/termine">Terminé</a>
+				<% } %>
+			</li>
+		</ul>
+		<button id="clear-completed" class="ng-binding ng-hide">Clear completed (0)</button>
+	</footer>
+</section>
+	
+
+	<script>
+
+		$('#todo-form').keypress(function(e) {
+		    if(e.which == 13) {
+
+		        $.ajax({
+					type: "post",
+					url: "todos",
+					data: {str: $('#new-todo').val()}
+				}).done(function(data) {
+					var todo = JSON.parse(data);
+					console.log(todo);
+					addTodo(todo);
+				});
+
+				$('#new-todo').val("");
+
+				refreshListTodo();
+
+				return false;
+		    }
+		});
+
+		$("#clear-completed").on("click", function() {
+			$.ajax({
+				type: "delete",
+				url: "todos/termine",
+				success: function() {
+					refreshListTodo();
+				}
+			});
+		});
+
+		$("#toggle-all").change(function (event) {
+
+			if ($("#toggle-all").is(":checked")) {
+				$("[id^=check]").attr("checked", true);
+				for (var i = $("[id^=check]").next().length - 1; i >= 0; i--) {
+					checkTodo($("[id^=check]").next()[i].id);
+				};
+			} else {
+				$("[id^=check]").attr("checked", false);
+				for (var i = $("[id^=check]").next().length - 1; i >= 0; i--) {
+					checkTodo($("[id^=check]").next()[i].id);
+				};
+			}
+			
+		});
+
+		function refreshListTodo() {
+			$.ajax({
+				type: "get",
+				url: "todos",
+				success: function(data) {
+
+					var listTodos = JSON.parse(data);
+
+					$("#todo-list").empty();
+					for (var i = 0; i <= listTodos['todos'].length - 1; i++) {
+						addTodo(listTodos['todos'][i]);
+					};
+
+					$("#clear-completed").empty();
+					$("#clear-completed").append("Supprimer complété ("+listTodos['termine']+")");
+					$("#todo-count").empty();
+					$("#todo-count").append("<strong>"+listTodos['actif']+"</strong> Todo(s) restant");
+				}
+			});
+		}
+
+		function addTodo(todo) {
+
+			var input = $("<input class='toggle' id='check"+todo.id+"' type='checkbox'>");
+				input.attr("checked", todo.done == "true");
+			var label = $("<label id='"+todo.id+"' class='ng-binding'>").append(todo.str);
+			var button = $("<button id='delete" + todo.id + "' class='destroy'>");
+			var view = $("<div class='view'>");
+
+			var inputEdit = $("<input class='edit' id='editInput"+todo.id+"'>");
+			var form = $("<form id='edit"+todo.id+"'>").append(inputEdit);
+
+			var li = $("<li>");
+			if(todo.done == "true") {
+				li.attr("class", "completed");
+			}
+
+			view.append(input, label, button);
+			li.append(view, form);
+
+			$("#todo-list").append(li);
+
+			// Event
+	  		$("#delete"+todo.id).on("click", function(event) {
+				// TODO : changer ça
+				var id = $(event.target).prev().attr('id');
+				deleteToto(id);
+			});
+			
+			var todoElem = $("#"+todo.id);
+
+			todoElem.dblclick(function (event) {
+				var id = $(event.target).attr('id');
+
+				doubleClickTodo(id);
+			});
+
+
+			$("#check"+todo.id).change(function(event) {
+
+				// TODO : changer ça
+				var id = $(event.target).next().attr('id');
+				checkTodo(id);
+			});
+		}
+
+		function checkTodo(id) {
+
+			$.ajax({
+				type:"put",
+				url:"todos/"+id,
+				data: {
+					'done': $("#check"+id).get(0).checked
+				},
+				success: function(data) {
+					refreshListTodo();
+				}
+			});
+		}
+
+		function deleteToto(id) {
+			$.ajax({
+				type:"delete",
+				url:"todos/"+id,
+				success: function() {
+					refreshListTodo();
+				}
+			});
+		}
+
+		function doubleClickTodo(id) {
+			$("#"+id).parent().parent().attr("class", "editing");
+			$("#editInput"+id).val($("#"+id).text());
+			$("#editInput"+id).focus();
+
+			$("#editInput"+id).on("focusout", function(event) {
+				$(event.target).parent().parent().attr("class", "");
+			})
+
+			$("#edit"+id).keypress(function(e) {
+		    	if(e.which == 13) {
+		    		$.ajax({
+						type:"put",
+						url:"todos/"+id,
+						data: {
+							'str': $("#editInput"+id).val()
+						},
+						success: function(data) {
+							refreshListTodo();
+						}
+					});
+
+		    		return false;
+		    	}
+		    });
+		}
+
+
+
+		refreshListTodo();
+	</script>
+
+	</body>
+</html>
+
