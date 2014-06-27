@@ -5,6 +5,7 @@ var cookieParser = require('cookie-parser')
 var session      = require('express-session')
 var app          = express();
 var mode = "normal";
+var todoList;
 
 
 app.use(bodyParser());
@@ -18,8 +19,8 @@ app.use(session({
 
 
 app.use(function(req, res, next){
-    if (typeof(req.session.todolist) == 'undefined') {
-        req.session.todolist = [];
+    if (typeof(todoList) == 'undefined') {
+        todoList = [];
         req.session.idToto = 0;
     }
 
@@ -44,7 +45,7 @@ app.get("/termine", function(req, res) {
 
 // Return list of todo
 app.get("/todos", function(req, res) {
-	var listTodoTempo = req.session.todolist;
+	var listTodoTempo = todoList;
 	var listTodo = [];
 	var termine = 0;
 	var actif = 0;
@@ -75,7 +76,7 @@ app.post("/todos", function(req, res) {
 		done: false
 	};
 
-	req.session.todolist.push(todo);
+	todoList.push(todo);
 
 	req.session.save();
 
@@ -84,19 +85,19 @@ app.post("/todos", function(req, res) {
 
 app.put("/todos/:id", function(req, res) {
 	var todo = [];
-	for (var i = req.session.todolist.length - 1; i >= 0; i--) {
+	for (var i = todoList.length - 1; i >= 0; i--) {
 
-		if (typeof(req.session.todolist[i]) !== "undefined") {
+		if (typeof(todoList[i]) !== "undefined") {
 
-			if (req.session.todolist[i].id == req.params.id) {
+			if (todoList[i].id == req.params.id) {
 				if (typeof(req.body.str) !== "undefined") {
-					req.session.todolist[i].str = req.body.str;
+					todoList[i].str = req.body.str;
 				}
 				if (typeof(req.body.done) !== "undefined") {
-					req.session.todolist[i].done = req.body.done;
+					todoList[i].done = req.body.done;
 				}
 
-				todo = req.session.todolist[i];
+				todo = todoList[i];
 			}
 		}
 	};
@@ -107,15 +108,15 @@ app.put("/todos/:id", function(req, res) {
 app.delete("/todos/termine", function(req, res) {
 	var listTodosTempo = [];
 
-	for (var i = 0; i <= req.session.todolist.length - 1; i++) {
-		if (typeof(req.session.todolist[i]) !== "undefined") {
-			if (req.session.todolist[i].done == "false" || req.session.todolist[i].done == false) {
-				listTodosTempo.push(req.session.todolist[i]);
+	for (var i = 0; i <= todoList.length - 1; i++) {
+		if (typeof(todoList[i]) !== "undefined") {
+			if (todoList[i].done == "false" || todoList[i].done == false) {
+				listTodosTempo.push(todoList[i]);
 			}
 		}
 	};
 
-	req.session.todolist = listTodosTempo;
+	todoList = listTodosTempo;
 
 	res.end(JSON.stringify(listTodosTempo));
 	req.session.save();
@@ -125,19 +126,19 @@ app.delete("/todos/:id", function(req, res) {
 	var todo = [];
 	var idTodo = null;
 
-	for (var i = req.session.todolist.length - 1; i >= 0; i--) {
+	for (var i = todoList.length - 1; i >= 0; i--) {
 
-		if (typeof(req.session.todolist[i]) !== "undefined") {
-			if (req.session.todolist[i].id == req.params.id) {
+		if (typeof(todoList[i]) !== "undefined") {
+			if (todoList[i].id == req.params.id) {
 				idTodo = i;
-				todo = req.session.todolist[i];
+				todo = todoList[i];
 			}
 		}
 
 	};
 
 	if (idTodo != null) {
-		req.session.todolist.splice(idTodo, 1);
+		todoList.splice(idTodo, 1);
 	}
 
 	res.end(JSON.stringify(todo));
